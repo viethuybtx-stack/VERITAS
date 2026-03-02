@@ -34,7 +34,8 @@ export default function App() {
     setResult(null);
 
     try {
-      const data = await verifyInformation(input);
+      const userLocale = navigator.language || 'en-US';
+      const data = await verifyInformation(input, userLocale);
       setResult(data);
       setHistory(prev => [{ input: input.slice(0, 50) + (input.length > 50 ? '...' : ''), veracity: data.veracity }, ...prev].slice(0, 5));
     } catch (err: any) {

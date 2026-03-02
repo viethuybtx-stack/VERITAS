@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -10,24 +10,27 @@ export interface VerificationResult {
   sources: Array<{ title: string; url: string }>;
 }
 
-export async function verifyInformation(input: string): Promise<VerificationResult> {
+export async function verifyInformation(input: string, locale: string = 'en-US'): Promise<VerificationResult> {
   const model = "gemini-3-flash-preview";
   
-  const systemInstruction = `You are a professional fact-checker for a high-end news verification service. 
-Your goal is to analyze the provided information or news article and determine its veracity based on the most current and credible information available via Google Search.
+  // Map locale to language name for the model
+  const languageName = new Intl.DisplayNames(['en'], { type: 'language' }).of(locale.split('-')[0]) || 'English';
 
-CRITICAL: You MUST respond in the SAME LANGUAGE as the user's input query. For example, if the user asks in Vietnamese, your entire JSON response (except for the keys and the veracity enum values) must be in Vietnamese.
+  const systemInstruction = `You are an elite, high-speed fact-checker. 
+Your task is to provide a lightning-fast yet highly accurate verification of the provided claim or URL.
 
-Respond ONLY in the following JSON format:
+CRITICAL: You MUST respond in ${languageName}. All fields in the JSON (summary, analysis) must be in ${languageName}.
+
+Respond ONLY in this JSON format:
 {
   "veracity": "True" | "False" | "Misleading" | "Unverified" | "Partially True",
   "confidence": number (0-100),
-  "summary": "A concise 1-2 sentence summary of the verdict in the user's language.",
-  "analysis": "A detailed breakdown of the facts in the user's language. Use markdown for formatting.",
+  "summary": "A 1-sentence sharp verdict in ${languageName}.",
+  "analysis": "A concise, bulleted breakdown of facts in ${languageName}. Focus on speed and precision. Use markdown.",
   "sources": []
 }
 
-Be objective, neutral, and thorough. If the input is a URL, visit it (if possible) or search for its content. If it's text, verify the claims within it.`;
+Use Google Search to find the most recent and authoritative data. Be decisive.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -37,6 +40,8 @@ Be objective, neutral, and thorough. If the input is a URL, visit it (if possibl
         systemInstruction,
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
+        // Thinking level LOW for faster response as requested
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
     });
 
